@@ -1,0 +1,101 @@
+using GTA;
+using GTA.Native;
+using CancelEventArgs = System.ComponentModel.CancelEventArgs;
+using LemonUI.Elements;
+using LemonUI.Menus;
+using LemonUI.Scaleform;
+using LemonUI.TimerBars;
+using System;
+using System.Drawing;
+using LemonUI;
+using System.Windows.Forms;
+
+namespace NewStory.Example
+{
+    /// <summary>       /!\   Actually not  working  /!\
+    /// A test menu to trying to know =  How to increase a int on a checkbox check (for each 3x checkbox)
+    ///                                  & Then reuse those 3 int (Do a sum) in a button validation to do a logic like -if SUM == 0  notify nothing in the order
+    ///                                                                                                                -if SUM >= 3 notify to much thing in the order
+    ///                                                                                                                -if SUM <=2 and if SUM >=1 Launch the order
+    ///                                  Checkbox item name = -Switch -Machete -Dagger
+    ///                                  button validation (Here called BuyValid_Activated)
+    ///                                  3 int called - Bswitch - Bmachete - Bdagger (3 others int are for cost calculation - Cswitch - Cmachete-  Cdagger)
+    ///                                  Sum int is called Btotal (Ctotal id for total cost)
+    /// </summary>
+    public class PedGangMenu : Script
+    {
+        private static readonly ObjectPool pool = new ObjectPool();
+        private static readonly NativeMenu TurfMenu = new NativeMenu("Turf's Manager", "Help you manage", "Lots of stuff to do.")   {   ItemCount = CountVisibility.Always };
+        private static readonly NativeMenu GunSubMenu = new NativeMenu("Buy & Sell Guns", "Buy & Sell Guns & Ammo", "Make an order or sell stuff.")   {   MaxItems = 17 };
+        private static readonly NativeMenu BuyGunSubMenu = new NativeMenu("Buy Guns & Ammo", "Make an Order", "Max ~r~2 item ~w~in each order.")   {   MaxItems = 17 };
+        private static readonly NativeMenu BuyBladeSubMenu = new NativeMenu("Buy Guns & Ammo", "Make an Order", "Max ~r~2 item ~w~in each order.") { MaxItems = 17 };
+        private static readonly NativeCheckboxItem Switch = new NativeCheckboxItem("SwitchBlade", "~r~1.000$ ~g~Add a SwitchBlade to your order.");
+        private static readonly NativeCheckboxItem Machete = new NativeCheckboxItem("Machete", "~r~5.000$ ~g~Add a Machete to your order.");
+        private static readonly NativeCheckboxItem Dagger = new NativeCheckboxItem("Antique Cavalry Dagger", "~r~13.000$ ~g~Add Antique Cavalry Dagger to your order.");
+        private static readonly NativeItem BuyValid = new NativeItem("Launch the delivery", "A crate will land somewhere on the map");
+
+        int Bswitch { get; set; } = 0;  
+        int Bmachete { get; set; } = 0;    
+        int Bdagger { get; set; } = 0; 
+
+        int Btotal { get; set; } = 0;
+
+        public PedGangMenu()
+
+        {   // Add the events of the menu and the items
+            TurfMenu.Shown += Menu_Shown;
+            TurfMenu.Closing += Menu_Closing;
+            BuyValid.Activated += BuyValid_Activated;      //Order Launch Item
+            // And then the items and submenus themselves
+            TurfMenu.AddSubMenu(GunSubMenu);
+            GunSubMenu.AddSubMenu(BuyGunSubMenu);
+            BuyGunSubMenu.AddSubMenu(BuyBladeSubMenu);
+            BuyBladeSubMenu.Add(Switch);
+            BuyBladeSubMenu.Add(Machete);
+            BuyBladeSubMenu.Add(Dagger);
+
+            // Items need to be part of the pool
+            pool.Add(TurfMenu);                 //Main
+            pool.Add(GunSubMenu);               //1st submenu Where the user choose what he wants to do         (Only BuyGuns actually)
+            pool.Add(BuyGunSubMenu);            //2nd submenu Where user choose which categorie he wanna buy    (Only Blades actually)
+            pool.Add(BuyBladeSubMenu);          //3rd submenu Where user buy blade                              (Switchblade + Machete + Dagger)
+
+            Tick += onTick;                     // Add the tick event
+            KeyDown += onKeyDown;               // Add the key press event
+        }
+        public static void Switch_CheckboxChanged(object sender, EventArgs e,ref int Bswitch) { Bswitch = 1;return; }
+        public static void Machete_CheckboxChanged(object sender, EventArgs e,ref int Bmachete) { Bmachete = 1; return; }
+        public static void Dagger_CheckboxChanged(object sender, EventArgs e,ref int Bdagger) { Bdagger = 1; return; }
+        private static void Menu_Shown(object sender, EventArgs e) { }
+        private static void Menu_Closing(object sender, CancelEventArgs e)  { }
+        private static void BuyValid_Activated(object sender, EventArgs e)
+        {
+            if (Switch.Checked) { Bswitch = 1; } else { Bswitch = 0; }
+
+            if (Machete.Checked) { Bmachete = 1; } else { Bmachete = 0; }
+
+            if (Dagger.Checked) { Bdagger = 1; } else { Bdagger = 0; }
+
+            Btotal = Bswitch + Bmachete + Bdagger;
+
+            if (Btotal == 0) { UI.Notify("Value is ZERO"); }
+
+            if (Btotal>=1)if(Btotal<=2) { UI.Notify("Value is between 1 & 2"); }
+
+            if (Btotal >= 3) { UI.Notify("Value is THREE"); }
+        }
+        #region onTick
+        private void onTick(object sender, EventArgs e)
+        {
+            
+            pool.Process();
+        }
+        #region OnkeyDown
+        private void onKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.NumPad2) //put whatever key binding you want here
+            { TurfMenu.Visible = true; }
+        }
+        #endregion
+    }
+}
